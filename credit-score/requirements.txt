@@ -4,3 +4,4 @@ celery
 pika
 psycopg2-binary
 sqlalchemy
+redis

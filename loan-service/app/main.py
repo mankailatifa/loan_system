@@ -8,11 +8,11 @@ from celery import Celery
 from celery.result import AsyncResult
 # from app.credit_tasks import compute_credit_score
 # from app.celery_app import celery_app
-from celery import Celery
+from app.tasks import celery
 
 celery_app = Celery(
-    "loan_service",
-    broker="pyamqp://guest@rabbitmq//"  # adresse de ton RabbitMQ
+    "loan_tasks",
+    broker="pyamqp://guest@rabbitmq//"   # RabbitMQ du cluster
 )
 
 import os

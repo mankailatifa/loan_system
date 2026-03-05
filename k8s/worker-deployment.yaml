@@ -15,7 +15,7 @@ spec:
       containers:
       - name: celery-worker
         image: credit-service:latest
-        command: ["celery", "-A", "app.tasks.celery_app", "worker", "--loglevel=info"]
+        command: ["python", "app/worker.py"]
         env:
         - name: BROKER_URL
           value: "amqp://guest:guest@rabbitmq:5672//"
