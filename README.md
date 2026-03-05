@@ -1,5 +1,5 @@
-Loan Processing System – Microservices with Kubernetes
-Overview
+# Loan Processing System – Microservices with Kubernetes
+
 
 This project implements a Loan Processing System using a microservices architecture deployed on Kubernetes.
 
@@ -78,7 +78,9 @@ Technologies:
 
 FastAPI
 
-System Architecture
+## System Architecture
+```text
+
                 +-------------------+
                 |       User        |
                 +---------+---------+
@@ -111,6 +113,7 @@ System Architecture
                | Solvency Decision    |
                |      Service         |
                +----------------------+
+```
 
 Technologies Used
 
