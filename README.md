@@ -93,3 +93,7 @@ kubectl apply -f k8s/microservices/
 kubectl get pods
 kubectl get services
 ```
+## Utilisation et Tests
+- Interface Utilisateur : Accédez au formulaire de demande via http://localhost:<NodePort-LoanService>/form.
+- Dashboard Temps Réel : Ouvrez l'interface de notification sur http://localhost:<NodePort-NotificationService>/dashboard pour voir les mises à jour en direct.
+- Monitoring Celery : Accédez à Flower via http://localhost:<NodePort-Flower> pour observer l'exécution des tâches asynchrones en arrière-plan
