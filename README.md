@@ -1,263 +1,73 @@
-# Loan Processing System – Microservices with Kubernetes
+# Système de Gestion des Demandes de Prêt Immobilier - Architecture Microservices
 
+Ce projet implémente un processus métier de gestion des demandes de prêt immobilier en utilisant des concepts avancés de microservices, de tâches asynchrones, et de messagerie interservices. 
 
-This project implements a Loan Processing System using a microservices architecture deployed on Kubernetes.
+Il a été conçu pour être scalable, tolérant aux pannes et orienté événements, démontrant l'utilisation de patterns d'architecture modernes (Chorégraphie, Pattern Saga, WebSockets).
 
-The application allows users to submit loan requests, compute a credit score, and determine whether the loan should be approved or rejected.
+## 🏗️ Architecture du Système
 
-The services communicate asynchronously using RabbitMQ and Celery, while PostgreSQL is used for data storage.
+Le système est composé de plusieurs microservices distincts qui communiquent de manière asynchrone[cite: 11]:
 
-Architecture
+1. **Service des demandes de prêt (Loan Service)** : Point d'entrée principal. Gère la création et la validation initiale des dossiers
+2. **Service de vérification du crédit (Credit Service)** : Évalue les antécédents financiers du client de manière asynchrone.
+3. **Service d'évaluation du bien (Property Service)** : Analyse la valeur du bien immobilier ciblé (tâche asynchrone).
+4. **Service de décision (Decision Service)** : Agrège les résultats et procède à l'approbation ou au rejet de la demande.
+5. **Service de notification (Notification Service)** : Informe les clients des résultats en temps réel via WebSockets.
 
-The system contains the following microservices:
+### Flux de données (Event-Driven)
 
-1️⃣ Loan Service
-
-Main entry point of the application.
-
-Responsibilities:
-
-Provides an API and HTML form to submit loan requests
-
-Stores loan information in the database
-
-Sends a task to compute the credit score
-
-Technologies:
-
-FastAPI
-
-PostgreSQL
-
-Celery
-
-RabbitMQ
-
-2️⃣ Credit Score Service
-
-Computes the client's credit score asynchronously.
-
-Responsibilities:
-
-Receives tasks from RabbitMQ
-
-Reads financial information
-
-Computes the credit score
-
-Updates the loan database
-
-Credit score formula:
-
-score = 1000 - 0.1 * debt - 50 * latePayments - (200 if hasBankruptcy else 0)
-
-
-Technologies:
-
-Celery Worker
-
-RabbitMQ
-
-Redis
-
-PostgreSQL
-
-3️⃣ Solvency Decision Service
-
-Determines whether the loan is approved.
-
-Decision rule example:
-
-if score > 600 and monthlyIncome > monthlyExpenses:
-    decision = APPROVED
-else:
-    decision = REJECTED
-
-
-Technologies:
-
-FastAPI
-
-## System Architecture
 ```text
-
                 +-------------------+
-                |       User        |
-                +---------+---------+
-                          |
-                          ▼
-                 +------------------+
-                 |   Loan Service   |
-                 |     (FastAPI)    |
-                 +--------+---------+
-                          |
-                          | Celery Task
-                          ▼
-                    +------------+
-                    | RabbitMQ   |
-                    +------+-----+
-                           |
-                           ▼
-               +----------------------+
-               | Credit Score Worker  |
-               |      (Celery)        |
-               +----------+-----------+
-                          |
-                          ▼
-                    +-----------+
-                    |PostgreSQL |
-                    +-----------+
-                          |
-                          ▼
-               +----------------------+
-               | Solvency Decision    |
-               |      Service         |
-               +----------------------+
+                |  Client / User    | <-------------------------+ (WebSockets SSE)
+                +---------+---------+                           |
+                          | (HTTP POST)                         |
+                          ▼                                     |
+                 +------------------+                  +------------------+
+                 |   Loan Service   |                  | Notification Svc |
+                 |     (FastAPI)    |                  |    (FastAPI)     |
+                 +--------+---------+                  +--------+---------+
+                          |                                     ▲
+                          | Événement "Demande Créée"           | Événement "Décision Prise"
+                          ▼                                     |
+                    +-----------------------------------------------+
+                    |                  RabbitMQ                     |
+                    +----+--------------------------------------+---+
+                         |                                      |
+       +-----------------+-----------------+                    |
+       |                                   |                    |
+       ▼                                   ▼                    |
++----------------------+        +----------------------+        |
+| Credit Score Worker  |        | Property Eval Worker |        |
+|      (Celery)        |        |      (Celery)        |        |
++----------+-----------+        +----------+-----------+        |
+           |                               |                    |
+           +---------------+---------------+                    |
+                           | Événements "Évalué"                |
+                           ▼                                    |
+                 +----------------------+                       |
+                 | Solvency Decision    |-----------------------+
+                 |      Service         |
+                 +----------------------+
+
 ```
-
-Technologies Used
-
-FastAPI
-
-Celery
-
-RabbitMQ
-
-Redis
-
-PostgreSQL
-
-Docker
-
-Kubernetes
-
-## Project Structure
+## Technologies Utilisées
+- Backend : Python, FastAPI (API REST et WebSockets).
+- Traitements Asynchrones : Celery, Redis (Backend de résultats).
+- Message Broker : RabbitMQ (Gestion des flux atomiques et durabilité des messages).
+- Base de données : PostgreSQL.Déploiement & Orchestration : Docker, Kubernetes.Monitoring : Flower (Monitoring des tâches Celery)
+## 📂 Structure du Projet
 ```text
 loan-system/
 │
-├── loan-service/
-│   ├── app/
-│   │   ├── main.py
-│   │   └── form.html
-│   └── Dockerfile
+├── loan-service/          # API de création des demandes
+├── credit-score/          # Worker Celery pour le crédit
+├── property-eval/         # Worker Celery pour l'évaluation immobilière
+├── decision-service/      # API d'agrégation et de décision
+├── notification-service/  # API WebSockets pour le temps réel
 │
-├── credit-score/
-│   ├── app/
-│   │   └── tasks.py
-│   └── Dockerfile
-│
-├── solvency-decision/
-│   ├── app/
-│   │   └── main.py
-│   └── Dockerfile
-│
-├── k8s/
-│   ├── postgres-deployment.yaml
-│   ├── postgres-service.yaml
-│   ├── rabbitmq-deployment.yaml
-│   ├── rabbitmq-service.yaml
-│   ├── redis-deployment.yaml
-│   ├── redis-service.yaml
-│   ├── loan-service-deployment.yaml
-│   ├── loan-service-service.yaml
-│   ├── credit-worker-deployment.yaml
-│   ├── solvency-service-deployment.yaml
-│   └── solvency-service.yaml
+├── k8s/                   # Fichiers de configuration Kubernetes
+│   ├── infrastructure/    # Déploiements DB, Redis, RabbitMQ
+│   └── microservices/     # Déploiements des services métiers
 │
 └── README.md
 ```
-
-Kubernetes Deployment
-1️⃣ Build Docker Images
-
-Build the images locally:
-```bash
-docker build -t loan-service ./loan-service
-docker build -t credit-service ./credit-score
-docker build -t decision-service ./solvency-decision
-```
-## Start Kubernetes
-
-If using Docker Desktop:
-
-Enable Kubernetes
-
-
-Check cluster:
-
-kubectl get nodes
-
-##  Deploy Infrastructure Services
-
-Deploy databases and message broker:
-```bash
-kubectl apply -f k8s/postgres-deployment.yaml
-kubectl apply -f k8s/rabbitmq-deployment.yaml
-kubectl apply -f k8s/redis-deployment.yaml
-```
-
-Check pods:
-
-kubectl get pods
-
-4️⃣ Deploy Microservices
-kubectl apply -f k8s/loan-service-deployment.yaml
-kubectl apply -f k8s/credit-worker-deployment.yaml
-kubectl apply -f k8s/solvency-service-deployment.yaml
-
-5️⃣ Verify Services
-
-List services:
-
-kubectl get services
-
-
-Example output:
-
-loan-service       NodePort
-solvency-service   NodePort
-postgres           ClusterIP
-rabbitmq           ClusterIP
-
-Access the Application
-
-Open the Loan Service:
-
-http://localhost:<NodePort>/form
-
-
-Example:
-
-http://localhost:30007/form
-
-Debugging
-
-View logs:
-
-kubectl logs <pod-name>
-
-
-Example:
-
-kubectl logs credit-worker-xxxxx
-
-
-Enter a container:
-
-kubectl exec -it <pod-name> -- /bin/bash
-
-Useful Commands
-
-Check pods:
-
-kubectl get pods
-
-
-Check services:
-
-kubectl get svc
-
-
-Delete deployment:
-
-kubectl delete -f k8s/
