@@ -1,15 +1,13 @@
 import os
-from sqlalchemy import create_engine, Column, String, Float,Boolean
+from sqlalchemy import create_engine, Column, String, Float, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-# L'URL de la base de données vient de Kubernetes/Docker
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://user:password@localhost/loan_db")
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://user:password@postgres:5432/loan_db")
 
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
-# Voici la table qui va stocker les données du formulaire
 class LoanRequestDB(Base):
     __tablename__ = "loan_requests"
 
@@ -28,6 +26,6 @@ class LoanRequestDB(Base):
     # Informations ajoutées par le worker Property
     property_value = Column(Float, nullable=True)
     is_property_valid = Column(Boolean, nullable=True)
-
-# Crée les tables dans la base de données
+    notification_sent = Column(Boolean, default=False)
+# Important : On s'assure que la table se met à jour si elle existe déjà
 Base.metadata.create_all(bind=engine)

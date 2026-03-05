@@ -1,48 +1,52 @@
+import os
+import time
 from celery import Celery
-from sqlalchemy import create_engine, text
+from .database import SessionLocal, LoanRequestDB
 
-# Création de l'instance Celery
-celery_app = Celery(
-    "credit_tasks",
-    broker="pyamqp://guest@rabbitmq//",
-    backend="redis://redis:6379/0"
-)
+RABBITMQ_URL = os.getenv("CELERY_BROKER_URL", "amqp://guest:guest@rabbitmq:5672//")
 
-# DB financière
-FINANCE_DB = "postgresql://finance_user:finance_pass@postgres:5432/finance_db"
-LOAN_DB = "postgresql://loan_user:loan_pass@postgres:5432/loan_db"
+# Initialisation du worker Celery
+app = Celery("credit_tasks", broker=RABBITMQ_URL)
 
-finance_engine = create_engine(FINANCE_DB)
-loan_engine = create_engine(LOAN_DB)
+@app.task(name="credit.evaluate_score")
+def evaluate_score(request_id, monthly_income, monthly_expenses):
+    print(f"Démarrage de l'analyse de crédit pour le dossier {request_id}...")
+    
+    # Simulation d'un appel API externe long (ex: Banque de France)
+    time.sleep(5) 
 
-# Tâche enregistrée avec le nom exact
-@celery_app.task(name="compute_credit_score")
-def compute_credit_score(client_id):
-    # récupération des infos financières
-    with finance_engine.connect() as conn:
-        result = conn.execute(
-            text("SELECT debt, late_payments, has_bankruptcy FROM financial_info WHERE client_id = :client_id"),
-            {"client_id": client_id}
-        ).fetchone()
+    # --- Logique Métier (Formule du README) ---
+    debt = monthly_expenses * 12
+    late_payments = 0
+    has_bankruptcy = False
 
-    if not result:
-        print("Client not found")
-        return None
+    score = 1000 - (0.1 * debt) - (50 * late_payments) - (200 if has_bankruptcy else 0)
+    score = max(0, min(1000, score))
+    # ------------------------------------------
 
-    debt = result.debt
-    late_payments = result.late_payments
-    has_bankruptcy = result.has_bankruptcy
-
-    # calcul du score
-    score = 1000 - 0.1*debt - 50*late_payments - (200 if has_bankruptcy else 0)
-
-    # mise à jour dans loans
-    with loan_engine.connect() as conn:
-        conn.execute(
-            text("UPDATE loans SET credit_score = :score WHERE client_id = :client_id"),
-            {"score": score, "client_id": client_id}
-        )
-        conn.commit()
-
-    print(f"Score for {client_id}: {score}")
-    return score
+    # Mise à jour dans la base de données PostgreSQL
+    db = SessionLocal()
+    try:
+        loan = db.query(LoanRequestDB).filter(LoanRequestDB.id == request_id).first()
+        if loan:
+            loan.credit_score = score
+            db.commit()
+            print(f"✅ Score calculé pour {request_id} : {score}/1000")
+            
+            app.send_task('notification.send_email', args=[request_id, loan.client_name, "CREDIT_DONE"], queue='notification_queue')
+    finally:
+        db.close()
+    
+    # --- NOUVEAU : Vérification pour la Décision Finale ---
+    db_check = SessionLocal()
+    try:
+        check_loan = db_check.query(LoanRequestDB).filter(LoanRequestDB.id == request_id).first()
+        # On vérifie si l'immo a AUSSI fini son travail
+        if check_loan and check_loan.credit_score is not None and check_loan.property_value is not None:
+            print("➡️ Le Crédit est le dernier à finir ! Envoi à la décision finale...")
+            app.send_task('decision.evaluate_solvency', args=[request_id], queue='decision_queue')
+        
+    finally:
+        db_check.close()
+        
+    return {"request_id": request_id, "score": score}

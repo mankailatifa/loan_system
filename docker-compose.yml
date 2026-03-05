@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: loan_db
+    ports:
+      - "5432:5432"
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  loan-service:
+    build: ./loan-service   # Docker va construire l'image à partir de ton dossier
+    ports:
+      - "8000:8000"
+    environment:
+      # On dit à l'API comment contacter la DB et RabbitMQ dans le réseau Docker
+      - DATABASE_URL=postgresql://user:password@postgres:5432/loan_db
+      - CELERY_BROKER_URL=amqp://guest:guest@rabbitmq:5672//
+    depends_on:
+      - postgres
+      - rabbitmq
+
+  credit-worker:
+    build: ./credit-score
+    environment:
+      - DATABASE_URL=postgresql://user:password@postgres:5432/loan_db
+      - CELERY_BROKER_URL=amqp://guest:guest@rabbitmq:5672//
+    depends_on:
+      - postgres
+      - rabbitmq
+  property-worker:
+    build: ./property-eval
+    environment:
+      - DATABASE_URL=postgresql://user:password@postgres:5432/loan_db
+      - CELERY_BROKER_URL=amqp://guest:guest@rabbitmq:5672//
+    depends_on:
+      - postgres
+      - rabbitmq
+  notification-worker:
+    build: ./notification-service
+    environment:
+      - CELERY_BROKER_URL=amqp://guest:guest@rabbitmq:5672//
+    depends_on:
+      - rabbitmq
+  decision-worker:
+    build: ./solvency-decision
+    environment:
+      - DATABASE_URL=postgresql://user:password@postgres:5432/loan_db
+      - CELERY_BROKER_URL=amqp://guest:guest@rabbitmq:5672//
+    depends_on:
+      - postgres
+      - rabbitmq

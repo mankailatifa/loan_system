@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BankFlow - Système de Prêt</title>
+    <style>
+        /* --- Styles de base et Palette --- */
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --sidebar-bg: #1e1b4b;
+            --bg-color: #f3f4f6;
+            --text-main: #1f2937;
+            --text-muted: #6b7280;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', 'Segoe UI', sans-serif;
+            background-color: var(--bg-color);
+            display: flex;
+            height: 100vh;
+            color: var(--text-main);
+        }
+
+        /* --- Sidebar --- */
+        .sidebar {
+            width: 260px;
+            background-color: var(--sidebar-bg);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+        }
+        .sidebar-header {
+            padding: 25px 20px;
+            font-size: 1.4em;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            background-color: rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .sidebar-menu {
+            list-style: none;
+            padding: 20px 0;
+            margin: 0;
+        }
+        .sidebar-menu li {
+            padding: 15px 25px;
+            font-size: 1.05em;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-left: 4px solid transparent;
+            opacity: 0.8;
+        }
+        .sidebar-menu li:hover {
+            background-color: rgba(255,255,255,0.05);
+            opacity: 1;
+        }
+        .sidebar-menu li.active {
+            background-color: rgba(255,255,255,0.1);
+            border-left: 4px solid var(--primary);
+            font-weight: 600;
+            opacity: 1;
+        }
+
+        /* --- Contenu Principal & Vues --- */
+        .main-content {
+            flex: 1;
+            padding: 40px;
+            overflow-y: auto;
+        }
+        .view-section {
+            display: none; /* Caché par défaut */
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        .view-section.active {
+            display: block; /* Affiché si actif */
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* --- Cartes --- */
+        .card {
+            background: white;
+            padding: 35px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03);
+            max-width: 700px;
+        }
+        .card-full {
+            max-width: 100%;
+        }
+        .card h2 {
+            margin-top: 0;
+            font-size: 1.5em;
+            color: var(--text-main);
+            margin-bottom: 25px;
+        }
+
+        /* --- Formulaire --- */
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .form-group.full-width {
+            grid-column: span 2;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--text-muted);
+            font-size: 0.9em;
+            font-weight: 600;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 1em;
+            transition: border-color 0.2s;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+        .btn-submit {
+            grid-column: span 2;
+            padding: 14px;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-top: 10px;
+        }
+        .btn-submit:hover { background-color: var(--primary-hover); }
+        .btn-submit:disabled { background-color: #9ca3af; cursor: not-allowed; }
+
+        /* --- Tableau de bord --- */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        th {
+            background-color: #f9fafb;
+            color: var(--text-muted);
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+        .badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+        .bg-pending { background-color: #fef3c7; color: #d97706; }
+        .bg-approved { background-color: #d1fae5; color: #059669; }
+        .bg-rejected { background-color: #fee2e2; color: #dc2626; }
+
+        /* --- Tracker Temps Réel --- */
+        .empty-state { text-align: center; padding: 40px; color: var(--text-muted); }
+        .tracker-container { display: none; }
+        .step {
+            font-size: 1.1em;
+            margin: 20px 0;
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            background: #f9fafb;
+            border-radius: 8px;
+            border-left: 4px solid var(--text-muted);
+        }
+        .step.active { border-color: var(--primary); background: #eef2ff; }
+        .step.done { border-color: var(--success); background: #ecfdf5; }
+        .step span { margin-left: 15px; font-weight: 500; }
+        
+        .spinner {
+            width: 20px; height: 20px;
+            border: 3px solid rgba(79, 70, 229, 0.2);
+            border-radius: 50%;
+            border-top-color: var(--primary);
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        .decision-box {
+            margin-top: 30px;
+            padding: 20px;
+            text-align: center;
+            font-size: 1.4em;
+            font-weight: bold;
+            border-radius: 8px;
+            background: #f9fafb;
+        }
+
+        /* --- Conteneur de Notifications Empilables --- */
+        #toast-container {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 15px; /* Espace entre les bulles */
+        }
+        .toast-bubble {
+            min-width: 280px;
+            padding: 16px 20px;
+            color: white;
+            border-radius: 8px;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.2);
+            font-size: 1.05em;
+            font-weight: 500;
+            transform: translateX(120%); /* Caché à droite au début */
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.4s ease;
+            opacity: 0;
+        }
+        .toast-bubble.show {
+            transform: translateX(0); /* Fait glisser la bulle dans l'écran */
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="sidebar-header">
+            🏦 BankFlow
+        </div>
+        <ul class="sidebar-menu">
+            <li class="nav-item active" onclick="switchView('view-dashboard', this)">
+                📊 Vue d'ensemble
+            </li>
+            <li class="nav-item" onclick="switchView('view-form', this)">
+                📝 Nouvelle demande
+            </li>
+            <li class="nav-item" onclick="switchView('view-tracking', this)">
+                📡 Suivi en direct
+            </li>
+        </ul>
+    </div>
+
+    <div class="main-content">
+        
+        <div id="view-dashboard" class="view-section active">
+            <div class="card card-full">
+                <h2>📊 Historique des demandes</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID Dossier</th>
+                            <th>Client</th>
+                            <th>Montant</th>
+                            <th>Statut</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="loans-table-body">
+                        <tr>
+                            <td colspan="5" class="empty-state">
+                                <i>Aucune donnée chargée. (L'API devra fournir ces informations)</i>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="view-form" class="view-section">
+            <div class="card">
+                <h2>Nouvelle demande de prêt</h2>
+                <form id="loanForm" class="form-grid">
+                    <div class="form-group full-width">
+                        <label>Nom complet du client</label>
+                        <input type="text" name="client_name" required placeholder="Ex: Jean Dupont">
+                    </div>
+                    <div class="form-group">
+                        <label>Revenus mensuels (€)</label>
+                        <input type="number" name="monthly_income" required placeholder="4000">
+                    </div>
+                    <div class="form-group">
+                        <label>Dépenses mensuelles (€)</label>
+                        <input type="number" name="monthly_expenses" required placeholder="1200">
+                    </div>
+                    <div class="form-group">
+                        <label>Montant du prêt demandé (€)</label>
+                        <input type="number" name="loan_amount" required placeholder="250000">
+                    </div>
+                    <div class="form-group">
+                        <label>Adresse du bien immobilier</label>
+                        <input type="text" name="property_address" required placeholder="Paris, 75001">
+                    </div>
+                    <button type="submit" class="btn-submit">Lancer l'analyse distribuée</button>
+                </form>
+            </div>
+        </div>
+
+        <div id="view-tracking" class="view-section">
+            <div class="card">
+                <h2>📡 Suivi de la dernière demande</h2>
+                
+                <div id="tracker-empty" class="empty-state">
+                    <p>Aucune analyse en cours.</p>
+                    <p style="font-size: 0.9em; margin-top: 10px;">Soumettez une nouvelle demande pour voir le suivi en direct.</p>
+                </div>
+
+                <div id="tracker-content" class="tracker-container">
+                    <p style="color: var(--text-muted); font-size: 0.9em; margin-bottom: 25px;">
+                        ID Dossier: <span id="display-id" style="font-family: monospace; color: var(--primary);"></span>
+                    </p>
+
+                    <div class="step active" id="step-credit">
+                        <div class="spinner"></div>
+                        <span>Analyse du risque de crédit en cours...</span>
+                    </div>
+
+                    <div class="step active" id="step-property">
+                        <div class="spinner"></div>
+                        <span>Estimation du bien immobilier en cours...</span>
+                    </div>
+
+                    <div class="step" id="step-decision" style="display: none;">
+                        <div class="spinner"></div><span>Analyse par le comité bancaire...</span>
+                    </div>
+
+                    <div class="step" id="step-notification" style="display: none;">
+                        <div class="spinner"></div><span>Génération de l'email client...</span>
+                    </div>
+
+                    <div class="decision-box" id="final-decision" style="display: none;">
+                        ⏳ Décision de la banque en attente...
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div id="toast-container"></div>
+
+    <script>
+        // --- 1. FONCTION POUR CHARGER LE TABLEAU DE BORD ---
+        async function loadDashboardData() {
+            try {
+                const response = await fetch('/api/loans');
+                const loans = await response.json();
+                const tbody = document.getElementById('loans-table-body');
+                
+                if (loans.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Aucun dossier trouvé dans la base de données.</td></tr>';
+                    return;
+                }
+                
+                tbody.innerHTML = ''; 
+                
+                loans.forEach(loan => {
+                    let badgeClass = 'bg-pending';
+                    let statusText = 'En attente ⏳';
+                    
+                    if (loan.status === 'APPROVED') {
+                        badgeClass = 'bg-approved';
+                        statusText = 'Approuvé ✅';
+                    } else if (loan.status === 'REJECTED') {
+                        badgeClass = 'bg-rejected';
+                        statusText = 'Refusé ❌';
+                    }
+                    
+                    const shortId = loan.id.split('-')[0];
+                    const formattedAmount = new Intl.NumberFormat('fr-FR').format(loan.loan_amount);
+
+                    const row = `
+                        <tr>
+                            <td style="font-family: monospace; color: var(--text-muted); font-size: 0.9em;">#${shortId}</td>
+                            <td style="font-weight: 600;">${loan.client_name}</td>
+                            <td>${formattedAmount} €</td>
+                            <td><span class="badge ${badgeClass}">${statusText}</span></td>
+                            <td>
+                                <button style="padding: 6px 12px; border: 1px solid #d1d5db; background: white; border-radius: 6px; cursor: pointer; font-size: 0.85em;">
+                                    Détails
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                    tbody.innerHTML += row;
+                });
+            } catch (error) {
+                console.error("Erreur lors du chargement des données:", error);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', loadDashboardData);
+
+        // --- 2. LOGIQUE DE NAVIGATION (Changement d'onglets) ---
+        function switchView(viewId, element) {
+            document.querySelectorAll('.view-section').forEach(view => {
+                view.classList.remove('active');
+            });
+            document.getElementById(viewId).classList.add('active');
+
+            document.querySelectorAll('.nav-item').forEach(nav => {
+                nav.classList.remove('active');
+            });
+            element.classList.add('active');
+
+            if (viewId === 'view-dashboard') {
+                loadDashboardData();
+            }
+        }
+
+        // --- Fonction pour générer une bulle de notification ---
+        function createToast(message, colorCode) {
+            const container = document.getElementById("toast-container");
+            const bubble = document.createElement("div");
+            bubble.className = "toast-bubble";
+            bubble.style.backgroundColor = colorCode;
+            bubble.innerHTML = message;
+            
+            container.appendChild(bubble);
+            
+            // Animation d'entrée
+            setTimeout(() => bubble.classList.add("show"), 50);
+            
+            // Disparaît après 5 secondes
+            setTimeout(() => {
+                bubble.classList.remove("show");
+                setTimeout(() => bubble.remove(), 400); // Suppression du HTML après l'animation
+            }, 5000);
+        }
+
+        // --- 3. SOUMISSION DU FORMULAIRE ET TEMPS RÉEL ---
+        document.getElementById("loanForm").addEventListener("submit", async function(event) {
+            event.preventDefault();
+            
+            const formData = new FormData(this);
+            const btnSubmit = document.querySelector(".btn-submit");
+            
+            btnSubmit.disabled = true;
+            btnSubmit.innerText = "Création du dossier...";
+
+            try {
+                const response = await fetch("/submit-form/", { method: "POST", body: formData });
+                const data = await response.json();
+                
+                if (data.id_suivi) {
+                    this.reset();
+                    btnSubmit.disabled = false;
+                    btnSubmit.innerText = "Lancer l'analyse distribuée";
+
+                    // Basculer sur l'onglet de suivi
+                    const trackingNavItem = document.querySelectorAll('.nav-item')[2];
+                    switchView('view-tracking', trackingNavItem);
+
+                    // Afficher et réinitialiser le tracker
+                    document.getElementById("tracker-empty").style.display = "none";
+                    document.getElementById("tracker-content").style.display = "block";
+                    document.getElementById("display-id").innerText = data.id_suivi;
+                    
+                    document.getElementById("step-credit").className = "step active";
+                    document.getElementById("step-credit").innerHTML = '<div class="spinner"></div><span>Analyse du risque de crédit en cours...</span>';
+                    
+                    document.getElementById("step-property").className = "step active";
+                    document.getElementById("step-property").innerHTML = '<div class="spinner"></div><span>Estimation du bien immobilier en cours...</span>';
+                    
+                    // Cacher les étapes suivantes
+                    document.getElementById("step-decision").style.display = "none";
+                    document.getElementById("step-notification").style.display = "none";
+                    document.getElementById("final-decision").style.display = "none";
+
+                    // Variables pour ne pas afficher la même bulle deux fois
+                    let notifiedCredit = false;
+                    let notifiedProperty = false;
+                    let notifiedDecision = false;
+
+                    // Connexion WebSocket
+                    const wsUrl = `ws://${window.location.host}/ws/notifications/${data.id_suivi}`;
+                    const socket = new WebSocket(wsUrl);
+                    
+                    socket.onmessage = function(event) {
+                        const state = JSON.parse(event.data);
+                        
+                        // 1. Notification Crédit
+                        if (state.credit_done && !notifiedCredit) {
+                            notifiedCredit = true;
+                            createToast("✅ <b>Email reçu:</b> Analyse de crédit terminée !", "#3b82f6"); 
+                            
+                            document.getElementById("step-credit").className = "step done";
+                            document.getElementById("step-credit").innerHTML = '✅ <span style="color: var(--success);">Score de crédit validé !</span>';
+                        }
+                        
+                        // 2. Notification Immo
+                        if (state.property_done && !notifiedProperty) {
+                            notifiedProperty = true;
+                            createToast("🏠 <b>Email reçu:</b> Estimation du bien terminée !", "#3b82f6"); 
+                            
+                            document.getElementById("step-property").className = "step done";
+                            document.getElementById("step-property").innerHTML = '🏠 <span style="color: var(--success);">Évaluation du bien terminée !</span>';
+                        }
+                        
+                        // 3. Passage en comité
+                        const decisionStep = document.getElementById("step-decision");
+                        if (state.credit_done && state.property_done && state.status === "PENDING") {
+                            decisionStep.style.display = "flex";
+                            decisionStep.className = "step active";
+                        }
+
+                        // 4. Décision finale prise (envoi de la notif en cours)
+                        if (state.status !== "PENDING" && !notifiedDecision) {
+                            notifiedDecision = true;
+                            createToast("⚖️ Décision prise, génération du contrat...", "#f59e0b"); // Orange
+                            
+                            decisionStep.className = "step done";
+                            decisionStep.innerHTML = '⚖️ <span style="color: var(--success);">Décision tranchée !</span>';
+                            
+                            const notifStep = document.getElementById("step-notification");
+                            notifStep.style.display = "flex";
+                            notifStep.className = "step active";
+                        }
+
+                        // 5. Notification finale envoyée (Fin du workflow)
+                   // 5. Notification finale envoyée (Fin du workflow)
+    if (state.notification_sent) {
+        const notifStep = document.getElementById("step-notification");
+        notifStep.className = "step done";
+        notifStep.innerHTML = '📧 <span style="color: var(--success);">Email envoyé au client !</span>';
+        
+        const finalBox = document.getElementById("final-decision");
+        finalBox.style.display = "block";
+        
+        if (state.status === "APPROVED") {
+            createToast("🎉 <b>Email reçu:</b> FÉLICITATIONS, PRÊT ACCORDÉ !", "#10b981");
+            finalBox.style.color = "var(--success)";
+            finalBox.innerText = "🎉 PRÊT ACCORDÉ !";
+        } else {
+            createToast("❌ <b>Email reçu:</b> Désolé, PRÊT REFUSÉ.", "#ef4444");
+            finalBox.style.color = "var(--danger)";
+            finalBox.innerText = "❌ PRÊT REFUSÉ.";
+        }
+        
+        // NOUVEAU : On rafraîchit le tableau de bord en arrière-plan
+        loadDashboardData(); 
+        
+        socket.close(); 
+    }
+                    };
+
+                    socket.onerror = function(error) {
+                        console.error("Erreur WebSocket:", error);
+                        btnSubmit.disabled = false;
+                        btnSubmit.innerText = "Erreur de connexion";
+                    };
+                }
+            } catch (error) {
+                console.error("Erreur:", error);
+                btnSubmit.disabled = false;
+                btnSubmit.innerText = "Erreur, réessayer";
+            }
+        });
+    </script>
+</body>
+</html>
