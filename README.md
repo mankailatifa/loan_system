@@ -71,3 +71,25 @@ loan-system/
 │
 └── README.md
 ```
+## ⚙️ Déploiement avec Kubernetes
+### Construire les images Docker
+```bash 
+docker build -t loan-service ./loan-service
+docker build -t credit-service ./credit-score
+docker build -t property-service ./property-eval
+docker build -t decision-service ./decision-service
+docker build -t notification-service ./notification-service
+```
+### Déployer l'infrastructure (Bases de données & Brokers)
+```bash
+kubectl apply -f k8s/infrastructure/
+```
+### Déployer les Microservices
+```bash
+kubectl apply -f k8s/microservices/
+```
+### Vérifier l'état du cluster
+```bash 
+kubectl get pods
+kubectl get services
+```
