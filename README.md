@@ -171,12 +171,12 @@ Kubernetes Deployment
 1️⃣ Build Docker Images
 
 Build the images locally:
-
+```bash
 docker build -t loan-service ./loan-service
 docker build -t credit-service ./credit-score
 docker build -t decision-service ./solvency-decision
-
-2️⃣ Start Kubernetes
+```
+## Start Kubernetes
 
 If using Docker Desktop:
 
@@ -187,14 +187,14 @@ Check cluster:
 
 kubectl get nodes
 
-3️⃣ Deploy Infrastructure Services
+##  Deploy Infrastructure Services
 
 Deploy databases and message broker:
-
+```bash
 kubectl apply -f k8s/postgres-deployment.yaml
 kubectl apply -f k8s/rabbitmq-deployment.yaml
 kubectl apply -f k8s/redis-deployment.yaml
-
+```
 
 Check pods:
 
