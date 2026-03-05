@@ -131,9 +131,9 @@ Docker
 
 Kubernetes
 
-Project Structure
+## Project Structure
+```text
 loan-system/
-
 │
 ├── loan-service/
 │   ├── app/
@@ -165,6 +165,7 @@ loan-system/
 │   └── solvency-service.yaml
 │
 └── README.md
+```
 
 Kubernetes Deployment
 1️⃣ Build Docker Images
