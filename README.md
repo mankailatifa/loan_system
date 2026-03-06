@@ -126,8 +126,8 @@ Ce projet a été développé et orchestré par :
     * **LinkedIn** : [linkedin.com/in/cissmamadou](https://www.linkedin.com/in/cissemamadou/)
 
 * **MANKAI Latifa**
-      * **GitHub** : [github.com/ciscom](https://github.com/mankailatifa)
-      * **GitHub** : [google-gemini](https://github.com/google-gemini)
+     * **GitHub** : [github.com/ciscom](https://github.com/mankailatifa)
+     * **GitHub** : [linkedin](https://github.com/google-gemini)
 
 ---
 **Stack Technique** : Python (FastAPI), Celery, RabbitMQ, PostgreSQL, Docker & Kubernetes.
