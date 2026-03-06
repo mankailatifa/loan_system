@@ -126,7 +126,7 @@ Ce projet a été développé et orchestré par :
     * **LinkedIn** : [linkedin.com/in/cissmamadou](https://www.linkedin.com/in/cissemamadou/)
 
 * **MANKAI Latifa**
-     * **GitHub** : [github.com/ciscom](https://github.com/mankailatifa)
+     * **GitHub** : [github.com/ciscom](https://github.com/mankailatifa](https://github.com/mankailatifa)
      * **GitHub** : [linkedin]((https://www.linkedin.com/in/latifa-mankai-467833206/)
 
 ---
