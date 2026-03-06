@@ -1,10 +1,9 @@
-
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: credit-worker-deployment
 spec:
-  replicas: 2 # On lance 2 instances pour traiter les scores plus vite !
+  replicas: 2
   selector:
     matchLabels:
       app: credit-worker
@@ -15,9 +14,36 @@ spec:
     spec:
       containers:
       - name: credit-worker
-        image: credit-worker:latest # L'image que tu as buildée
-        # On surcharge la commande du Dockerfile pour être sûr de la file
+        image: credit-worker:latest
+        imagePullPolicy: Never
         args: ["celery", "-A", "app.tasks", "worker", "-Q", "credit_queue", "--loglevel=info"]
+        env:
+        - name: CELERY_BROKER_URL
+          value: "amqp://guest:guest@rabbitmq-service:5672//"
+        - name: DATABASE_URL
+          value: "postgresql://user:password@postgres-service:5432/loan_db"
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: property-worker-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: property-worker
+  template:
+    metadata:
+      labels:
+        app: property-worker
+    spec:
+      containers:
+      - name: property-worker
+        image: property-worker:latest
+        imagePullPolicy: Never
+        args: ["celery", "-A", "app.tasks", "worker", "-Q", "property_queue", "--loglevel=info"]
         env:
         - name: CELERY_BROKER_URL
           value: "amqp://guest:guest@rabbitmq-service:5672//"
@@ -43,6 +69,7 @@ spec:
       containers:
       - name: notification-worker
         image: notification-worker:latest
+        imagePullPolicy: Never
         args: ["celery", "-A", "app.tasks", "worker", "-Q", "notification_queue", "--loglevel=info"]
         env:
         - name: CELERY_BROKER_URL
@@ -51,25 +78,26 @@ spec:
           value: "postgresql://user:password@postgres-service:5432/loan_db"
 
 ---
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: property-worker-deployment
+  name: decision-worker-deployment
 spec:
-  replicas: 2 # On peut en mettre 2 pour traiter les dossiers en parallèle
+  replicas: 1
   selector:
     matchLabels:
-      app: property-worker
+      app: decision-worker
   template:
     metadata:
       labels:
-        app: property-worker
+        app: decision-worker
     spec:
       containers:
-      - name: property-worker
-        image: property-worker:latest
-        # On force l'écoute de la file "property_queue"
-        args: ["celery", "-A", "app.tasks", "worker", "-Q", "property_queue", "--loglevel=info"]
+      - name: decision-worker
+        image: decision-worker:latest
+        imagePullPolicy: Never
+        args: ["celery", "-A", "app.tasks", "worker", "-Q", "decision_queue", "--loglevel=info"]
         env:
         - name: CELERY_BROKER_URL
           value: "amqp://guest:guest@rabbitmq-service:5672//"

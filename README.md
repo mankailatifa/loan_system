@@ -1,4 +1,13 @@
-# Système de Gestion des Demandes de Prêt Immobilier - Architecture Microservices
+# 🏦 BankFlow : Système de Gestion de Prêt Immobilier
+
+![Python](https://img.shields.io/badge/Python-3.10%2B-blue)
+![FastAPI](https://img.shields.io/badge/Framework-FastAPI-009688)
+![Kubernetes](https://img.shields.io/badge/Orchestration-Kubernetes-326CE5)
+![Docker](https://img.shields.io/badge/Container-Docker-2496ED)
+![RabbitMQ](https://img.shields.io/badge/Broker-RabbitMQ-FF6600)
+![Celery](https://img.shields.io/badge/Queue-Celery-37814A)
+![Flower](https://img.shields.io/badge/Monitoring-Flower-white?logo=celery&logoColor=green)
+![PostgreSQL](https://img.shields.io/badge/DB-PostgreSQL-4169E1)
 
 Ce projet implémente un processus métier de gestion des demandes de prêt immobilier en utilisant des concepts avancés de microservices, de tâches asynchrones, et de messagerie interservices. 
 
@@ -6,13 +15,14 @@ Il a été conçu pour être scalable, tolérant aux pannes et orienté événem
 
 ## 🏗️ Architecture du Système
 
-Le système est composé de plusieurs microservices distincts qui communiquent de manière asynchrone[cite: 11]:
+Le système est découpé en services autonomes qui collaborent via **RabbitMQ** :
 
-1. **Service des demandes de prêt (Loan Service)** : Point d'entrée principal. Gère la création et la validation initiale des dossiers
-2. **Service de vérification du crédit (Credit Service)** : Évalue les antécédents financiers du client de manière asynchrone.
-3. **Service d'évaluation du bien (Property Service)** : Analyse la valeur du bien immobilier ciblé (tâche asynchrone).
-4. **Service de décision (Decision Service)** : Agrège les résultats et procède à l'approbation ou au rejet de la demande.
-5. **Service de notification (Notification Service)** : Informe les clients des résultats en temps réel via WebSockets.
+1.  **Loan Service** : Portail FastAPI. Gère la création des dossiers en PostgreSQL.
+2.  **Credit Service** (Worker) : Analyse la solvabilité financière.
+3.  **Property Service** (Worker) : Évalue la valeur du bien immobilier.
+4.  **Decision Service** (Worker) : Agrège les données et valide/rejette le prêt.
+5.  **Notification Service** : Worker d'envoi d'emails et mise à jour en temps réel via WebSockets.
+6.  **Flower** : Interface de monitoring pour superviser les tâches Celery.
 
 ### Flux de données (Event-Driven)
 
@@ -56,44 +66,69 @@ Le système est composé de plusieurs microservices distincts qui communiquent d
 - Message Broker : RabbitMQ (Gestion des flux atomiques et durabilité des messages).
 - Base de données : PostgreSQL.Déploiement & Orchestration : Docker, Kubernetes.Monitoring : Flower (Monitoring des tâches Celery)
 ## 📂 Structure du Projet
+
 ```text
 loan-system/
-│
-├── loan-service/          # API de création des demandes
-├── credit-score/          # Worker Celery pour le crédit
-├── property-eval/         # Worker Celery pour l'évaluation immobilière
-├── decision-service/      # API d'agrégation et de décision
-├── notification-service/  # API WebSockets pour le temps réel
-│
-├── k8s/                   # Fichiers de configuration Kubernetes
-│   ├── infrastructure/    # Déploiements DB, Redis, RabbitMQ
-│   └── microservices/     # Déploiements des services métiers
-│
-└── README.md
+├── loan-service/          # API & Frontend (Jinja2/JS)
+├── credit-score/          # Worker Score Crédit
+├── property-eval/         # Worker Évaluation Bien
+├── solvency-decision/     # Worker Décision Finale
+├── notification-service/  # Worker Notifications & WS
+├── k8s/                   # Manifestes Kubernetes (YAML)
+└── docker-compose.yml
 ```
-## ⚙️ Déploiement avec Kubernetes
-### Construire les images Docker
+## 🐳 Déploiement avec Docker Compose
 ```bash 
-docker build -t loan-service ./loan-service
-docker build -t credit-service ./credit-score
-docker build -t property-service ./property-eval
-docker build -t decision-service ./decision-service
-docker build -t notification-service ./notification-service
+docker-compose up -d --build
 ```
-### Déployer l'infrastructure (Bases de données & Brokers)
-```bash
-kubectl apply -f k8s/infrastructure/
+> Accès : http://localhost:8000
+
+
+## ☸️ Déploiement avec Kubernetes
+### Build des images locales
+```bash 
+docker build -t loan-service:latest ./loan-service
+docker build -t credit-worker:latest ./credit-score
+docker build -t property-worker:latest ./property-eval
+docker build -t notification-worker:latest ./notification-service
+docker build -t decision-worker:latest ./solvency-decision
 ```
-### Déployer les Microservices
+### Déploiement de l'Infrastructure(Bases de données & Brokers)
 ```bash
-kubectl apply -f k8s/microservices/
+kubectl apply -f postgres-deployment.yaml
+kubectl apply -f rabbitmq-deployment.yaml
 ```
 ### Vérifier l'état du cluster
 ```bash 
 kubectl get pods
 kubectl get services
 ```
-## Utilisation et Tests
-- Interface Utilisateur : Accédez au formulaire de demande via http://localhost:<NodePort-LoanService>/form.
-- Dashboard Temps Réel : Ouvrez l'interface de notification sur http://localhost:<NodePort-NotificationService>/dashboard pour voir les mises à jour en direct.
-- Monitoring Celery : Accédez à Flower via http://localhost:<NodePort-Flower> pour observer l'exécution des tâches asynchrones en arrière-plan
+### Déploiement des Microservices & Monitoring
+```bash
+kubectl apply -f workers-deployment.yaml
+kubectl apply -f loan-deployment.yaml
+kubectl apply -f flower-deployment.yaml
+```
+
+### Accès aux Services
+| Service | Rôle | URL d'accès |
+| :--- | :--- | :--- |
+| **Interface BankFlow** | Portail client (Dépôt & Suivi de prêt) | [http://localhost:30001](http://localhost:30001) |
+| **Monitoring Flower** | Surveillance des tâches Celery | [http://localhost:30005](http://localhost:30005) |
+| **RabbitMQ Management** | Gestion du Broker (Files d'attente) | [http://localhost:15672](http://localhost:15672) |
+
+## 👥 Auteurs
+
+Ce projet a été développé et orchestré par :
+
+* **CISSE Mamadou**
+    * **GitHub** : [github.com/ciscom](https://github.com/Ciscom224)
+    * **LinkedIn** : [linkedin.com/in/cissmamadou](https://www.linkedin.com/in/cissemamadou/)
+
+* **MANKAI Latifa**
+      * **GitHub** : [github.com/ciscom](https://github.com/mankailatifa)
+      * **GitHub** : [google-gemini](https://github.com/google-gemini)
+
+---
+**Stack Technique** : Python (FastAPI), Celery, RabbitMQ, PostgreSQL, Docker & Kubernetes.
+*Environnement de développement : MacBook Pro et windows 11.*

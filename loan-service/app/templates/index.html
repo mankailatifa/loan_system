@@ -254,13 +254,13 @@
         </div>
         <ul class="sidebar-menu">
             <li class="nav-item active" onclick="switchView('view-dashboard', this)">
-                📊 Vue d'ensemble
+                📊 Accueil
             </li>
             <li class="nav-item" onclick="switchView('view-form', this)">
                 📝 Nouvelle demande
             </li>
             <li class="nav-item" onclick="switchView('view-tracking', this)">
-                📡 Suivi en direct
+                📡 Suivi de la demande
             </li>
         </ul>
     </div>
@@ -315,7 +315,7 @@
                         <label>Adresse du bien immobilier</label>
                         <input type="text" name="property_address" required placeholder="Paris, 75001">
                     </div>
-                    <button type="submit" class="btn-submit">Lancer l'analyse distribuée</button>
+                    <button type="submit" class="btn-submit">Envoyer</button>
                 </form>
             </div>
         </div>
@@ -469,7 +469,7 @@
                 if (data.id_suivi) {
                     this.reset();
                     btnSubmit.disabled = false;
-                    btnSubmit.innerText = "Lancer l'analyse distribuée";
+                    btnSubmit.innerText = "Envoyer";
 
                     // Basculer sur l'onglet de suivi
                     const trackingNavItem = document.querySelectorAll('.nav-item')[2];

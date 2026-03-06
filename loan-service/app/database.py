@@ -28,6 +28,8 @@ class LoanRequestDB(Base):
     # Informations ajoutées par le worker Property
     property_value = Column(Float, nullable=True)
     is_property_valid = Column(Boolean, nullable=True)
+    notification_sent = Column(Boolean, default=False)
+
 
 # Crée les tables dans la base de données
 Base.metadata.create_all(bind=engine)
